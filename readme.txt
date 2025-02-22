@@ -1,0 +1,1 @@
+This project is for creating the VPC cloudformation template.
