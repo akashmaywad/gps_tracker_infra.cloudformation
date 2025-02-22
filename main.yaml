@@ -1,5 +1,5 @@
 template-file-path: /templates/template.yaml
 parameters:
-  stack-name: GPS_Stack
+  StackName: GPS_Stack
 tags:
   env: ENG
