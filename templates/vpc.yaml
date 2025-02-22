@@ -5,14 +5,7 @@ Parameters:
     Type: String
   VPCCIDR:
     Type: String
-  PublicSubnetName:
-    Type: String
-  PublicSubnetCIDR:
-    Type: String
-  PrivateSubnetName:
-    Type: String
-  PrivateSubnetCIDR:
-    Type: String
+
 Resources:
   MyVPC:
     Type: AWS::EC2::VPC
@@ -23,33 +16,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref VPCName
-  PublicSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: us-west-2a
-      VpcId: !Ref MyVPC
-      CidrBlock: !Ref PublicSubnetCIDR
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Ref PublicSubnetName
-  PrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: us-west-2b
-      VpcId: !Ref MyVPC
-      CidrBlock: !Ref PrivateSubnetCIDR
-      MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: !Ref PrivateSubnetName
+
 Outputs:
   VPCId:
     Description: The ID of the created VPC
     Value: !Ref MyVPC
-  PublicSubnetId:
-    Description: The ID of the public subnet
-    Value: !Ref PublicSubnet
-  PrivateSubnetId:
-    Description: The ID of the private subnet
-    Value: !Ref PrivateSubnet
