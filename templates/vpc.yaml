@@ -3,14 +3,14 @@ Description: AWS CloudFormation Template for VPC and Subnets creation
 Parameters:
   VPCName:
     Type: String
-  VPCCIDR:
+  CIDR:
     Type: String
 
 Resources:
   MyVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !Ref VPCCIDR
+      CidrBlock: !Ref CIDR
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:

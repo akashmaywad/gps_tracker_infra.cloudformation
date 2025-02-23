@@ -1,7 +1,3 @@
 Parameters:
   VPCName: MyParameterizedVPC
-  VPCCIDR: 10.0.0.0/16
-  PublicSubnetName: MyPublicSubnet
-  PublicSubnetCIDR: 10.0.1.0/24
-  PrivateSubnetName: MyPrivateSubnet
-  PrivateSubnetCIDR: 10.0.2.0/24
+  CIDR: 10.0.4.0/25

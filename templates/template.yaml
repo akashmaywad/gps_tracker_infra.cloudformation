@@ -4,12 +4,14 @@ Description: "Root stack for deploying my infrastructure"
 Parameters:
   StackName:
     Type: String
+    Default: "default-stack-name"
 
 Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: ./templates/vpc.yaml
+      StackName: !Ref StackName
+      TemplateURL: /templates/vpc.yaml
       Parameters:
         VPCName: MyParameterizedVPC
-        VPCCIDR: 10.5.0.0/16
+        CIDR: 10.5.0.0/16
