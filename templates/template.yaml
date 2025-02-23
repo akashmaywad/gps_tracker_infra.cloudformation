@@ -2,9 +2,12 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Root stack for deploying my infrastructure"
 
 Parameters:
-  StackName:
+  VPCName:
     Type: String
-    Default: "default-stack-name"
+    Default: "default-VPC-Name"
+  CIDR:
+    Type: String
+    Default: 10.1.0.0/16
 
 Resources:
   VPCStack:
@@ -12,5 +15,5 @@ Resources:
     Properties:
       TemplateURL: https://cloudformationtemplate110.s3.ap-south-1.amazonaws.com/templates/vpc.yaml
       Parameters:
-        VPCName: MyParameterizedVPC
-        CIDR: 10.5.0.0/16
+        VPCName: !Ref VPCName
+        CIDR: !Ref CIDR

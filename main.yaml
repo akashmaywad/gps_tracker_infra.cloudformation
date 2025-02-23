@@ -1,5 +1,6 @@
 template-file-path: /templates/template.yaml
 parameters:
-  StackName: GPS_Stack
+  VPCName: NyNewVPC
+  CIDR: 10.3.0.0/27
 tags:
   env: ENG
