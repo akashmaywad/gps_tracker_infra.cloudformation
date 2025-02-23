@@ -10,7 +10,6 @@ Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      StackName: !Ref StackName
       TemplateURL: /templates/vpc.yaml
       Parameters:
         VPCName: MyParameterizedVPC
