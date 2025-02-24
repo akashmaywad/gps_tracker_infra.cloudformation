@@ -88,40 +88,6 @@ Resources:
       IpProtocol: -1
       SourceSecurityGroupId: !Ref EcsHostSecurityGroup
 
-  # Autoscaling group. This launches the actual EC2 instances that will register
-  # themselves as members of the cluster, and run the docker containers.
-  ECSAutoScalingGroup:
-    CreationPolicy:
-      ResourceSignal:
-        Timeout: PT15M
-    UpdatePolicy:
-      AutoScalingReplacingUpdate:
-        WillReplace: true
-    Type: AWS::AutoScaling::AutoScalingGroup
-    Properties:
-      VPCZoneIdentifier:
-        - !Ref PublicSubnetOne
-        - !Ref PublicSubnetTwo
-      LaunchConfigurationName: !Ref ContainerInstances
-      MinSize: "0"
-      MaxSize: !Ref MaxSize
-      DesiredCapacity: !Ref DesiredCapacity
-
-  ContainerInstances:
-    Type: AWS::AutoScaling::LaunchConfiguration
-    Properties:
-      ImageId: !Ref ECSAMI
-      SecurityGroups:
-        - !Ref EcsHostSecurityGroup
-      InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref EC2InstanceProfile
-      UserData: !Base64
-        Fn::Sub: |
-          #!/bin/bash -xe
-          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-          yum install -y aws-cfn-bootstrap
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
-
   AutoscalingRole:
     Type: AWS::IAM::Role
     Properties:
