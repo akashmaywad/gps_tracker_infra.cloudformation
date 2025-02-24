@@ -52,6 +52,8 @@ Resources:
   # ECS Resources
   ECSCluster:
     Type: AWS::ECS::Cluster
+    Properties:
+      "ClusterName": !Sub ${AWS::StackName}-ECS-Cluster
 
   # A security group for the EC2 hosts that will run the containers.
   # Two rules, allowing network traffic from a public facing load
@@ -67,14 +69,6 @@ Resources:
       GroupDescription: Access to the ECS hosts that run containers
       VpcId: !Ref VPCId
 
-  EcsSecurityGroupIngressFromPublicALB:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      Description: Ingress from the public ALB
-      GroupId: !Ref EcsHostSecurityGroup
-      IpProtocol: -1
-      SourceSecurityGroupId: !Ref PublicECSSG
-
   EcsSecurityGroupIngressFromSelf:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -82,6 +76,31 @@ Resources:
       GroupId: !Ref EcsHostSecurityGroup
       IpProtocol: -1
       SourceSecurityGroupId: !Ref EcsHostSecurityGroup
+
+  AutoscalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - application-autoscaling.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: service-autoscaling
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - application-autoscaling:*
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutMetricAlarm
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                Resource: '*'
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -124,47 +143,6 @@ Resources:
                   - ecr:BatchGetImage
                   - ecr:GetDownloadUrlForLayer
                 Resource: '*'
-  # This is an IAM role which authorizes ECS to manage resources on your
-  # account on your behalf, such as updating your load balancer with the
-  # details of where your containers are, so that traffic can reach your
-  # containers.
-  ECSRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ecs.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: ecs-service
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-
-                  # Rules which allow ECS to attach network interfaces to instances
-                  # on your behalf in order for awsvpc networking mode to work right
-                  - ec2:AttachNetworkInterface
-                  - ec2:CreateNetworkInterface
-                  - ec2:CreateNetworkInterfacePermission
-                  - ec2:DeleteNetworkInterface
-                  - ec2:DeleteNetworkInterfacePermission
-                  - ec2:Describe*
-                  - ec2:DetachNetworkInterface
-
-                  # Rules which allow ECS to update load balancers on your behalf
-                  # with the information sabout how to send traffic to your containers
-                  - elasticloadbalancing:DeregisterInstancesFromLoadBalancer
-                  - elasticloadbalancing:DeregisterTargets
-                  - elasticloadbalancing:Describe*
-                  - elasticloadbalancing:RegisterInstancesWithLoadBalancer
-                  - elasticloadbalancing:RegisterTargets
-                Resource: '*'
 
   # Autoscaling group. This launches the actual EC2 instances that will register
   # themselves as members of the cluster, and run the docker containers.
@@ -180,51 +158,27 @@ Resources:
       VPCZoneIdentifier:
         - !Ref PublicSubnetOne
         - !Ref PublicSubnetTwo
-      LaunchConfigurationName: !Ref ContainerInstances
-      MinSize: "1"
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplateSpecification
+      MinSize: "0"
       MaxSize: !Ref MaxSize
       DesiredCapacity: !Ref DesiredCapacity
 
-  ContainerInstances:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  LaunchTemplateSpecification:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      ImageId: ami-0be80e037af26a4ec
-      SecurityGroups:
-        - !Ref EcsHostSecurityGroup
-      InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref EC2InstanceProfile
-      UserData: !Base64
-        Fn::Sub: |
-          #!/bin/bash -xe
-          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-          yum install -y aws-cfn-bootstrap
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
-
-
-  AutoscalingRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - application-autoscaling.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: service-autoscaling
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - application-autoscaling:*
-                  - cloudwatch:DescribeAlarms
-                  - cloudwatch:PutMetricAlarm
-                  - ecs:DescribeServices
-                  - ecs:UpdateService
-                Resource: '*'
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt
+            - EC2InstanceProfile
+            - Arn
+        DisableApiTermination: true
+        ImageId: ami-0be80e037af26a4ec
+        InstanceType: t2.micro
+        KeyName: Test_Key_Pair
+        SecurityGroupIds:
+          - !GetAtt EcsHostSecurityGroup.GroupId
 
 Outputs:
   ClusterName:
@@ -235,15 +189,6 @@ Outputs:
         - ':'
         - - !Ref AWS::StackName
           - ClusterName
-
-  ECSRole:
-    Description: The ARN of the ECS role
-    Value: !GetAtt ECSRole.Arn
-    Export:
-      Name: !Join
-        - ':'
-        - - !Ref AWS::StackName
-          - ECSRole
 
   EcsHostSecurityGroup:
     Description: A security group used to allow containers to receive traffic
