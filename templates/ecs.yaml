@@ -28,11 +28,6 @@ Parameters:
     Type: Number
     Default: "1"
 
-  ECSAMI:
-    Description: AMI ID
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
-
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -87,31 +82,6 @@ Resources:
       GroupId: !Ref EcsHostSecurityGroup
       IpProtocol: -1
       SourceSecurityGroupId: !Ref EcsHostSecurityGroup
-
-  AutoscalingRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - application-autoscaling.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: service-autoscaling
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - application-autoscaling:*
-                  - cloudwatch:DescribeAlarms
-                  - cloudwatch:PutMetricAlarm
-                  - ecs:DescribeServices
-                  - ecs:UpdateService
-                Resource: '*'
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -196,9 +166,66 @@ Resources:
                   - elasticloadbalancing:RegisterTargets
                 Resource: '*'
 
-# These are the values output by the CloudFormation template. Be careful
-# about changing any of them, because of them are exported with specific
-# names so that the other task related CF templates can use them.
+  # Autoscaling group. This launches the actual EC2 instances that will register
+  # themselves as members of the cluster, and run the docker containers.
+  ECSAutoScalingGroup:
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: true
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PublicSubnetOne
+        - !Ref PublicSubnetTwo
+      LaunchConfigurationName: !Ref ContainerInstances
+      MinSize: "1"
+      MaxSize: !Ref MaxSize
+      DesiredCapacity: !Ref DesiredCapacity
+
+  ContainerInstances:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-0be80e037af26a4ec
+      SecurityGroups:
+        - !Ref EcsHostSecurityGroup
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash -xe
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+
+
+  AutoscalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - application-autoscaling.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: service-autoscaling
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - application-autoscaling:*
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutMetricAlarm
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                Resource: '*'
+
 Outputs:
   ClusterName:
     Description: The name of the ECS cluster
