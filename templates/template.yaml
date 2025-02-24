@@ -19,13 +19,13 @@ Resources:
     Properties:
       TemplateURL: https://cloudformationtemplate110.s3.ap-south-1.amazonaws.com/templates/ecs.yaml
       Parameters:
-        VPCName: !GetAtt VPCStackOutput.Outputs.VPCId
-        PublicSubnetOne: !GetAtt VPCStackOutput.Outputs.PublicSubnet0
-        PublicSubnetTwo: !GetAtt VPCStackOutput.Outputs.PublicSubnet1
+        VPCName: !GetAtt VPCStack.Outputs.VPCId
+        PublicSubnetOne: !GetAtt VPCStack.Outputs.PublicSubnet0
+        PublicSubnetTwo: !GetAtt VPCStack.Outputs.PublicSubnet1
         DesiredCapacity: "0"
         MaxSize: "1"
 
 Outputs:
   VPCStackOutput:
     Description: "Output from child stack"
-    Value: !GetAtt VPCStackOutput.Outputs.VPCId
+    Value: !GetAtt VPCStack.Outputs.VPCId
