@@ -19,7 +19,7 @@ Resources:
     Properties:
       TemplateURL: https://cloudformationtemplate110.s3.ap-south-1.amazonaws.com/templates/ecs.yaml
       Parameters:
-        VPCName: !GetAtt VPCStack.Outputs.VPCId
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
         PublicSubnetOne: !GetAtt VPCStack.Outputs.PublicSubnet0
         PublicSubnetTwo: !GetAtt VPCStack.Outputs.PublicSubnet1
         DesiredCapacity: "0"
