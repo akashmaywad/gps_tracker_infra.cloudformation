@@ -1,6 +1,5 @@
 template-file-path: /templates/template.yaml
 parameters:
   VPCName: NyNewVPC
-  CIDR: 10.3.0.0/27
 tags:
   env: ENG
